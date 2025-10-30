@@ -1,0 +1,27 @@
+name: sanity-check
+version: "1.0.0"
+description: "Project health check without GitHub API calls"
+metadata:
+  category: "utilities"
+  tags: ["health", "diagnostics"]
+
+parameters:
+  - name: target_dir
+    type: string
+    description: "Directory to check (defaults to current)"
+    required: false
+    default: "."
+
+prompt: |
+  # Sanity Check Command
+
+  You are running a project health check on: {{target_dir}}
+
+  ## Tasks
+  1. Check if git repository exists
+  2. Verify build files present (build.zig, Cargo.toml, or go.mod)
+  3. List recent commits (if git repo)
+  4. Check for common issues (uncommitted changes, etc.)
+
+  ## Output
+  Present a clear summary of the project's health status.
