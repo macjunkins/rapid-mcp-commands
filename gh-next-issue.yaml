@@ -1,0 +1,175 @@
+name: gh-next-issue
+version: "1.0.0"
+description: "Create the next sequential GitHub issue within a milestone"
+category: github
+
+parameters:
+  - name: milestone
+    type: string
+    required: false
+    description: "Milestone title to target (quoted if it contains spaces)"
+    validation:
+      max_length: 200
+  - name: repo
+    type: string
+    required: false
+    description: "Repository override in owner/repo format (use when not in a git repo or targeting a different repo)"
+    validation:
+      pattern: "^[^/]+/[^/]+$"
+
+examples:
+  - description: "Prompt to select a milestone from current repo context"
+    args: {}
+  - description: "Create next issue for a specific milestone"
+    args:
+      milestone: "User Authentication"
+  - description: "Target a specific repository and milestone"
+    args:
+      milestone: "Sprint 1"
+      repo: "macjunkins/rapid-mcp-server-go"
+
+prompt: |
+  You are creating the next sequential GitHub issue within a milestone.
+
+  ## Configuration
+  {{#if repo}}- Repository override: {{repo}}{{else}}- Repository: infer from current git context (use -R owner/repo if needed){{/if}}
+  {{#if milestone}}- Milestone: {{milestone}}{{else}}- Milestone: not provided (ask user to choose){{/if}}
+
+  ## Workflow (Follow exactly)
+
+  ### 1) Identify Target Milestone
+  {{#if milestone}}
+  - Use "{{milestone}}" as the milestone title ({{MILESTONE}})
+  {{else}}
+  - List available milestones (conceptual via `gh api repos/{owner}/{repo}/milestones --jq '.[].title'`)
+  - Ask the user: "Which milestone should I add the issue to?" and wait for a response
+  {{/if}}
+
+  ### 2) Gather Milestone Context
+  - Fetch milestone details and list existing issues in the milestone (conceptually using the gh CLI references):
+    - Details: `gh api repos/{owner}/{repo}/milestones --jq '.[] | select(.title == "{{MILESTONE}}")'`
+    - Issues: `gh issue list --milestone "{{MILESTONE}}" --json number,title,state`
+  - Analyze:
+    - What is the milestone goal?
+    - What issues already exist?
+    - What is the logical next issue?
+    - What gaps exist?
+
+  ### 3) Prompt for Issue Details (STOP and wait for user)
+  Ask the user:
+  "I found milestone \"{{MILESTONE}}\" with N existing issues.\n\nCurrent issues:\n- (list titles)\n\nWhat should the next issue be? Please provide:\n- What needs to be done?\n- How does it build on or complement existing issues?\n- Any specific requirements or constraints?"
+
+  ### 4) Build Next Issue (Draft)
+  Use the following template to draft the issue body based on the user's input and milestone context:
+
+  ```markdown
+  ## Description
+  {{What needs to be done - from user input}}
+
+  ## Context
+  **Milestone:** {{MILESTONE}}
+
+  **Related Issues:**
+  {{List related issues that this builds on or depends on}}
+
+  **Milestone Progress:**
+  {{X of Y issues complete}}
+
+  ## Acceptance Criteria
+  - [ ] {{Criterion 1 from user input}}
+  - [ ] {{Criterion 2 from user input}}
+  - [ ] {{Criterion 3 from user input}}
+
+  ## Technical Notes
+  {{Technical approach, constraints, or patterns to follow}}
+
+  ## Dependencies
+  {{If this issue depends on other issues in the milestone}}
+  - Depends on #{{NUMBER}} - {{TITLE}}
+
+  ## Definition of Done
+  - [ ] All acceptance criteria met
+  - [ ] Code follows project standards
+  - [ ] Tests pass
+  - [ ] Documentation updated
+  - [ ] No regression in existing functionality
+  - [ ] Milestone progress updated
+  ```
+
+  ### 5) Preview & Get Approval
+  Present the complete preview for confirmation:
+
+  ```
+  ═══════════════════════════════════════
+  CREATE NEXT ISSUE PREVIEW
+  ═══════════════════════════════════════
+  Title: {{ISSUE_TITLE}}
+
+  {{Issue body from the template above}}
+  ```
+
+  Ask: "Proceed to create this issue? (yes/no)"
+  - If "no": ask what to change and update the draft; show preview again.
+  - If "yes": continue.
+
+  ### 6) Create the Issue (conceptual CLI reference)
+  - Example (informational reference for execution):
+    - `gh issue create --title "{{ISSUE_TITLE}}" --body-file <draft.md> --milestone "{{MILESTONE}}" {{#if repo}}-R {{repo}}{{/if}}`
+  - After successful creation, display:
+
+  ```
+  ✅ Issue Created Successfully
+
+  Issue: #{{NUMBER}} - {{TITLE}}
+  Milestone: {{MILESTONE}} ({{X+1}}/{{Y}} issues complete)
+  Labels: {{LABELS}}
+  URL: https://github.com/{{owner}}/{{repo}}/issues/{{number}}
+
+  Milestone Progress:
+  {{Progress bar or percentage}}
+
+  Next Steps:
+  - Create another: /gh-next-issue "{{MILESTONE}}"
+  - Start work: /gh-work {{NUMBER}}
+  - Update progress: /gh-update-issue {{NUMBER}}
+  ```
+
+  ### 7) Error Handling (Follow these patterns)
+  - Not in a git repository:
+    ```
+    ⚠️  Not in a git repository.
+    Please navigate to your repository or specify: -R owner/repo
+    Example: /gh-next-issue "Milestone Name" -R macjunkins/project
+    ```
+  - Milestone doesn't exist:
+    ```
+    ❌ Milestone "{{MILESTONE}}" not found.
+
+    Available milestones:
+    {{List from gh api repos/{owner}/{repo}/milestones --jq '.[].title'}}
+
+    Options:
+    1. Create milestone first: /gh-create-milestone
+    2. Use different milestone name
+    3. Create issue without milestone: /create-issue
+    ```
+  - No milestones in repository:
+    ```
+    ⚠️  No milestones found in this repository.
+
+    Would you like to:
+    1. Create a milestone first: /gh-create-milestone
+    2. Create a standalone issue: /create-issue
+    ```
+  - GitHub authentication failure:
+    ```
+    ❌ GitHub CLI authentication failed.
+    Run: gh auth login
+    Then retry this command.
+    ```
+
+metadata:
+  os_integration:
+    requires_git: false
+    requires_gh_cli: true
+    system_permissions: []
