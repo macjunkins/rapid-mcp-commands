@@ -4,7 +4,7 @@ Shared YAML command definitions for Rapid MCP Server implementations.
 
 ## Overview
 
-This repository contains command definitions in YAML format that are consumed by both the Rust and Go implementations of the Rapid MCP Server. By centralizing command definitions, we ensure consistency across implementations.
+This repository contains command definitions in YAML format that are consumed by implementations of the Rapid MCP Server. By centralizing command definitions, we ensure consistency across implementations.
 
 ## Structure
 
